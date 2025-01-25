@@ -116,6 +116,7 @@ class MathQuiz(QWidget):
 
         self.question_label_hard = QLabel("Question 1")
         self.question_label_hard.setAlignment(Qt.AlignCenter)
+        self.question_label_hard.setStyleSheet("font-size: 40px; color: white;")
         self.game_content_layout_hard.addWidget(self.question_label_hard)
 
         self.equation_label_hard = QLabel("Equation 1")
@@ -123,28 +124,15 @@ class MathQuiz(QWidget):
         self.equation_label_hard.setStyleSheet("font-size: 30px;")
         self.game_content_layout_hard.addWidget(self.equation_label_hard)
 
-        self.answer_button_1 = QPushButton("A")
-        self.answer_button_1.clicked.connect(lambda: self.check_answer_hard(1))
-        self.game_content_layout_hard.addWidget(self.answer_button_1)
-
-        self.answer_button_2 = QPushButton("B")
-        self.answer_button_2.clicked.connect(lambda: self.check_answer_hard(2))
-        self.game_content_layout_hard.addWidget(self.answer_button_2)
-
-        self.answer_button_3 = QPushButton("C")
-        self.answer_button_3.clicked.connect(lambda: self.check_answer_hard(3))
-        self.game_content_layout_hard.addWidget(self.answer_button_3)
-
-        self.answer_button_4 = QPushButton("D")
-        self.answer_button_4.clicked.connect(lambda: self.check_answer_hard(4))
-        self.game_content_layout_hard.addWidget(self.answer_button_4)
-
-        self.answer_button_5 = QPushButton("E")
-        self.answer_button_5.clicked.connect(lambda: self.check_answer_hard(5))
-        self.game_content_layout_hard.addWidget(self.answer_button_5)
+        buttons = [("A", 1), ("B", 2), ("C", 3), ("D", 4), ("E", 5)]
+        for label, number in buttons:
+            button = self.create_answer_button(label, number)
+            setattr(self, f"answer_button_{number}", button)
+            self.game_content_layout_hard.addWidget(button)
 
         self.hard_game_section = QWidget()
         self.hard_game_section.setLayout(self.game_content_layout_hard)
+        self.hard_game_section.setStyleSheet("background-color: #3b4049;")
 
         self.stacked_game_modes.addWidget(self.easy_game_section)
         self.stacked_game_modes.addWidget(self.hard_game_section)
@@ -242,6 +230,27 @@ class MathQuiz(QWidget):
 
         self.equation_label.setText(f"{x} {op_symbol} {y}")
 
+    def create_answer_button(self, label, answer_number):
+        button = QPushButton(label)
+        button.clicked.connect(lambda: self.check_answer_hard(answer_number))
+        button.setStyleSheet("""
+            QPushButton {
+                background-color: #383e47;
+                color: white;
+                font-size: 18px;
+                border: 2px solid #383e47;
+                border-radius: 10px;
+                padding: 8px;
+            }
+            QPushButton:hover {
+                 background-color: #00b59d;
+            }
+            QPushButton:pressed {
+                background-color: #011d15;
+            }
+        """)
+        return button
+
     def generate_expression(self):
         x = sp.symbols('x')
         coeff_x2 = sp.Rational(random.randint(1, 5), random.randint(1, 5)) * random.choice([1, -1])
@@ -254,16 +263,12 @@ class MathQuiz(QWidget):
 
     def generate_quadratic_expression(self):
         x = sp.symbols('x')
-        coeff_x2 = sp.Rational(random.randint(1, 5), random.randint(1, 5)) * random.choice([1, -1])
-        coeff_x = sp.Rational(random.randint(1, 5), random.randint(1, 5)) * random.choice([1, -1])
-        constant = sp.Rational(random.randint(1, 5), random.randint(1, 5)) * random.choice([1, -1])
-        delta = coeff_x2 ** 2 - 4 * coeff_x * constant
-        while delta < 0:
-            coeff_x2 = sp.Rational(random.randint(1, 5), random.randint(1, 5)) * random.choice([1, -1])
-            coeff_x = sp.Rational(random.randint(1, 5), random.randint(1, 5)) * random.choice([1, -1])
-            constant = sp.Rational(random.randint(1, 5), random.randint(1, 5)) * random.choice([1, -1])
-            delta = coeff_x2 ** 2 - 4 * coeff_x * constant
-        expr = coeff_x2 * x ** 2 + coeff_x * x + constant
+        x1 = random.randint(-10, 10)
+        x2 = random.randint(-10, 10)
+        a = random.randint(1, 5) * random.choice([1, -1])
+        expr = a * (x - x1) * (x - x2)
+        expr = sp.expand(expr)
+
         return expr, x
 
     def get_equation_hard(self):
@@ -320,8 +325,13 @@ class MathQuiz(QWidget):
             self.render_latex_to_label(ans, getattr(self, f'answer_button_{i + 1}'))
 
     def render_latex_to_label(self, latex_str, widget):
-        plt.figure(figsize=(5, 1))
-        plt.text(0.5, 0.5, f"${latex_str}$", fontsize=20, ha='center', va='center')
+        if isinstance(widget, QPushButton):
+            facecolor = '#00b59d'
+        elif isinstance(widget, QLabel):
+            facecolor = '#3b4049'
+
+        plt.figure(figsize=(5, 1), facecolor=facecolor)
+        plt.text(0.5, 0.5, f"${latex_str}$", fontsize=25, ha='center', va='center', color='white')
         plt.axis('off')
 
         buffer = io.BytesIO()
@@ -376,11 +386,9 @@ class MathQuiz(QWidget):
         self.stop_thread = True
         self.stacked_widget.setCurrentWidget(self.end_screen)
         self.result_label.setText(f"Good answers: {self.good_answers}/10")
-
-        try:
+        if self.mode == 0:
             self.answer_entry.returnPressed.disconnect(self.submit_answer)
-        except TypeError:
-            pass
+
 
     def restart(self):
         self.stop_thread = False
