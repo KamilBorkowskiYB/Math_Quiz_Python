@@ -5,7 +5,7 @@ import time
 import sympy as sp
 from PySide6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QLineEdit, QProgressBar, QStackedWidget, QSizePolicy
+    QPushButton, QLineEdit, QProgressBar, QStackedWidget, QSizePolicy, QSlider
 )
 from PySide6.QtCore import Qt, Signal, QObject
 from PySide6.QtGui import QPixmap, QIcon
@@ -20,6 +20,7 @@ class MathQuiz(QWidget):
 
         self.question_number = 1
         self.good_answers = 0
+        self.quesions = 10
         self.answer = 0
         self.quiz_time = 70
         self.timer_thread = None
@@ -29,9 +30,56 @@ class MathQuiz(QWidget):
 
         self.initUI()
 
+
+    def create_button(self, text, callback):
+        button = QPushButton(text)
+        button.setFixedHeight(80)
+        button.setStyleSheet("""
+            QPushButton {
+                background-color: #006400;
+                color: white;
+                font-size: 25px;
+                border: 2px solid #006400;
+                border-radius: 10px;
+                padding: 8px;
+            }
+            QPushButton:hover {
+                background-color: #008000;
+            }
+            QPushButton:pressed {
+                background-color: #011d15;
+            }
+        """)
+        button.clicked.connect(callback)
+        return button
+
+
+    def create_answer_button(self, label, answer_number):
+        button = QPushButton(label)
+        button.clicked.connect(lambda: self.check_answer_hard(answer_number))
+        button.setStyleSheet("""
+            QPushButton {
+                background-color: #383e47;
+                color: white;
+                font-size: 18px;
+                border: 2px solid #383e47;
+                border-radius: 10px;
+                padding: 8px;
+            }
+            QPushButton:hover {
+                 background-color: #006400;
+            }
+            QPushButton:pressed {
+                background-color: #011d15;
+            }
+        """)
+        return button
+
+
     def initUI(self):
         self.setWindowTitle('Math Quiz')
         self.setGeometry(100, 100, 900, 900)
+        self.setStyleSheet("background-color: #3b4049;")
 
         # Main layout
         self.layout = QVBoxLayout()
@@ -43,34 +91,80 @@ class MathQuiz(QWidget):
 
         # Start screen
         self.start_screen = QWidget()
+        self.start_screen.setStyleSheet("background-color: #3b4049;")
         self.start_layout = QVBoxLayout()
         self.start_screen.setLayout(self.start_layout)
 
-        self.start_label = QLabel("You will answer 10 math\nquestions in a limited time.\nAre you ready?")
+        self.start_label = QLabel(f"You will answer 10 math\nquestions in 01:10 minutes.\nAre you ready?")
         self.start_label.setAlignment(Qt.AlignCenter)
+        self.start_label.setStyleSheet("font-size: 24px; color: white;")
         self.start_layout.addWidget(self.start_label)
 
-        self.start_button = QPushButton("Play easy")
-        self.start_button.clicked.connect(self.start_quiz)
-        self.start_layout.addWidget(self.start_button)
-        self.start_button.setDefault(True)
+        self.questions_layout = QHBoxLayout()
+        self.questions_layout.setSpacing(50)
+        self.questions_slider_label = QLabel("Questions")
+        self.questions_slider_label.setStyleSheet("font-size: 24px; color: white;")
+        self.questions_slider = QSlider(Qt.Horizontal)
+        self.questions_slider.setStyleSheet("""
+            QSlider::handle:horizontal {
+                background: #006400;
+                border: 1px solid #FFFFFF;
+                width: 20px;
+                height: 20px;
+            }
+        """)
+        self.questions_slider.setMinimum(1)
+        self.questions_slider.setMaximum(100)
+        self.questions_slider.setValue(10)
+        self.questions_slider.valueChanged.connect(self.update_label)
+        self.start_layout.addWidget(self.questions_slider)
+        self.questions_layout.addWidget(self.questions_slider_label)
+        self.questions_layout.addWidget(self.questions_slider)
+        self.start_layout.addLayout(self.questions_layout)
 
-        self.start_hard = QPushButton("Play hard")
-        self.start_hard.clicked.connect(self.start_quiz_hard)
-        self.start_layout.addWidget(self.start_hard)
+        self.time_layout = QHBoxLayout()
+        self.time_layout.setSpacing(103)
+        self.time_slider_label = QLabel("Time")
+        self.time_slider_label.setStyleSheet("font-size: 24px; color: white;")
+        self.time_slider = QSlider(Qt.Horizontal)
+        self.time_slider.setStyleSheet("""
+            QSlider::handle:horizontal {
+                background: #006400;
+                border: 1px solid #FFFFFF;
+                width: 20px;
+                height: 20px;
+            }
+        """)
+        self.time_slider.setMinimum(10)
+        self.time_slider.setMaximum(600)
+        self.time_slider.setValue(70)
+        self.time_slider.valueChanged.connect(self.update_label)
+        self.start_layout.addWidget(self.time_slider)
+        self.time_layout.addWidget(self.time_slider_label)
+        self.time_layout.addWidget(self.time_slider)
+        self.start_layout.addLayout(self.time_layout)
 
+        self.btns_layout = QHBoxLayout()
+        self.start_button = self.create_button("Play easy", self.start_quiz)
+        self.btns_layout.addWidget(self.start_button)
+
+        self.start_hard = self.create_button("Play hard", self.start_quiz_hard)
+        self.btns_layout.addWidget(self.start_hard)
+
+        self.start_layout.addLayout(self.btns_layout)
         self.stacked_widget.addWidget(self.start_screen)
 
         # Game screen
         self.game_screen = QWidget()
         self.game_layout = QHBoxLayout()
+        self.game_screen.setStyleSheet("background-color: #3b4049;")
         self.game_screen.setLayout(self.game_layout)
 
         # Timer section (left side)
         self.timer_section = QVBoxLayout()
         self.timer_label = QLabel("Time Left")
         self.timer_label.setAlignment(Qt.AlignCenter)
-        self.timer_label.setStyleSheet("font-size: 24px;")
+        self.timer_label.setStyleSheet("font-size: 24px; color: white;")
         self.timer_section.addWidget(self.timer_label)
 
         self.progress_bar = QProgressBar()
@@ -80,7 +174,6 @@ class MathQuiz(QWidget):
         self.progress_bar.setMinimumWidth(100)
         self.progress_bar.setMaximumWidth(150)
         self.timer_section.addWidget(self.progress_bar)
-
         self.game_layout.addLayout(self.timer_section)
 
         # Game sections (Stacked game modes)
@@ -92,20 +185,20 @@ class MathQuiz(QWidget):
 
         self.question_label = QLabel("Question 1")
         self.question_label.setAlignment(Qt.AlignCenter)
+        self.question_label.setStyleSheet("font-size: 40px; color: white;")
         self.game_content_layout_easy.addWidget(self.question_label)
 
         self.equation_label = QLabel("Equation 1")
         self.equation_label.setAlignment(Qt.AlignCenter)
-        self.equation_label.setStyleSheet("font-size: 30px;")
+        self.equation_label.setStyleSheet("font-size: 50px; color: white;")
         self.game_content_layout_easy.addWidget(self.equation_label)
 
         self.answer_entry = QLineEdit()
         self.answer_entry.setAlignment(Qt.AlignCenter)
-        self.answer_entry.setStyleSheet("font-size: 24px;")
+        self.answer_entry.setStyleSheet("font-size: 24px; color: white;")
         self.game_content_layout_easy.addWidget(self.answer_entry)
 
-        self.next_question_button = QPushButton("Next Question")
-        self.next_question_button.clicked.connect(self.submit_answer)
+        self.next_question_button = self.create_button("Next Question", self.submit_answer)
         self.game_content_layout_easy.addWidget(self.next_question_button)
 
         self.easy_game_section = QWidget()
@@ -121,7 +214,6 @@ class MathQuiz(QWidget):
 
         self.equation_label_hard = QLabel("Equation 1")
         self.equation_label_hard.setAlignment(Qt.AlignCenter)
-        self.equation_label_hard.setStyleSheet("font-size: 30px;")
         self.game_content_layout_hard.addWidget(self.equation_label_hard)
 
         buttons = [("A", 1), ("B", 2), ("C", 3), ("D", 4), ("E", 5)]
@@ -132,7 +224,6 @@ class MathQuiz(QWidget):
 
         self.hard_game_section = QWidget()
         self.hard_game_section.setLayout(self.game_content_layout_hard)
-        self.hard_game_section.setStyleSheet("background-color: #3b4049;")
 
         self.stacked_game_modes.addWidget(self.easy_game_section)
         self.stacked_game_modes.addWidget(self.hard_game_section)
@@ -143,28 +234,37 @@ class MathQuiz(QWidget):
         self.end_screen = QWidget()
         self.end_layout = QVBoxLayout()
         self.end_screen.setLayout(self.end_layout)
+        self.end_screen.setStyleSheet("background-color: #3b4049;")
 
         self.result_label = QLabel("Good answers: 0/10")
         self.result_label.setAlignment(Qt.AlignCenter)
-        self.result_label.setStyleSheet("font-size: 30px;")
+        self.result_label.setStyleSheet("font-size: 30px; color: white;")
         self.end_layout.addWidget(self.result_label)
 
-        self.restart_button = QPushButton("Play Again")
-        self.restart_button.clicked.connect(self.restart)
-        self.end_layout.addWidget(self.restart_button)
-        self.restart_button.setDefault(True)
+        self.end_btns_layout = QHBoxLayout()
+        self.restart_button = self.create_button("Play Again", self.restart)
+        self.end_btns_layout.addWidget(self.restart_button)
 
-        self.back_to_menu_button = QPushButton("Back to menu")
-        self.back_to_menu_button.clicked.connect(self.back_to_menu)
-        self.end_layout.addWidget(self.back_to_menu_button)
-
+        self.back_to_menu_button = self.create_button("Back to menu", self.back_to_menu)
+        self.end_btns_layout.addWidget(self.back_to_menu_button)
+        self.end_layout.addLayout(self.end_btns_layout)
         self.stacked_widget.addWidget(self.end_screen)
 
         self.stacked_widget.setCurrentWidget(self.start_screen)
 
         self.time_updated.connect(self.update_timer)
 
+    def update_label(self):
+        questions = self.questions_slider.value()
+        time = self.time_slider.value()
+        minutes, seconds = divmod(time, 60)
+        self.start_label.setText(f"You will answer {questions} math\nquestions in {minutes:02}:{seconds:02} minutes.\nAre you ready?")
+
+
     def start_quiz(self):
+        self.quesions = self.questions_slider.value()
+        self.quiz_time = self.time_slider.value()
+        self.progress_bar.setMaximum(self.quiz_time)
         self.stacked_game_modes.setCurrentWidget(self.easy_game_section)
         self.stacked_widget.setCurrentWidget(self.game_screen)
         self.answer_entry.setFocus()
@@ -174,6 +274,9 @@ class MathQuiz(QWidget):
         self.mode = 0
 
     def start_quiz_hard(self):
+        self.quesions = self.questions_slider.value()
+        self.quiz_time = self.time_slider.value()
+        self.progress_bar.setMaximum(self.quiz_time)
         self.stacked_game_modes.setCurrentWidget(self.hard_game_section)
         self.stacked_widget.setCurrentWidget(self.game_screen)
         self.start_timer()
@@ -181,7 +284,7 @@ class MathQuiz(QWidget):
         self.mode = 1
 
     def submit_answer(self):
-        if self.question_number == 10:
+        if self.question_number == self.quesions:
             self.check_equation()
             self.end_quiz()
         else:
@@ -194,11 +297,11 @@ class MathQuiz(QWidget):
 
     def check_answer_hard(self, ans):
         if ans == self.correct_answer:
-            print("Good guess")
+            #print("Good guess")
             self.good_answers += 1
-        else:
-            print("Wrong")
-        if self.question_number == 10:
+        #else:
+            #print("Wrong")
+        if self.question_number == self.quesions:
             self.end_quiz()
         else:
             self.question_number += 1
@@ -230,26 +333,6 @@ class MathQuiz(QWidget):
 
         self.equation_label.setText(f"{x} {op_symbol} {y}")
 
-    def create_answer_button(self, label, answer_number):
-        button = QPushButton(label)
-        button.clicked.connect(lambda: self.check_answer_hard(answer_number))
-        button.setStyleSheet("""
-            QPushButton {
-                background-color: #383e47;
-                color: white;
-                font-size: 18px;
-                border: 2px solid #383e47;
-                border-radius: 10px;
-                padding: 8px;
-            }
-            QPushButton:hover {
-                 background-color: #00b59d;
-            }
-            QPushButton:pressed {
-                background-color: #011d15;
-            }
-        """)
-        return button
 
     def generate_expression(self):
         x = sp.symbols('x')
@@ -293,7 +376,7 @@ class MathQuiz(QWidget):
             answer = sp.latex(sp.diff(expr, x))
         elif operation == 3:  # limit
             expr, x = self.generate_expression()
-            approach_value = random.choice([0, sp.oo, -sp.oo, random.randint(-10, 10)])
+            approach_value = random.choice([0, sp.oo, random.randint(-10, 10)])
             question = r"\lim_{" + sp.latex(x) + r"\to " + sp.latex(approach_value) + r"} \left(" + sp.latex(
                 expr) + r"\right)"
             answer = sp.latex(sp.limit(expr, x, approach_value))
@@ -326,7 +409,7 @@ class MathQuiz(QWidget):
 
     def render_latex_to_label(self, latex_str, widget):
         if isinstance(widget, QPushButton):
-            facecolor = '#00b59d'
+            facecolor = '#006400'
         elif isinstance(widget, QLabel):
             facecolor = '#3b4049'
 
@@ -385,7 +468,7 @@ class MathQuiz(QWidget):
     def end_quiz(self):
         self.stop_thread = True
         self.stacked_widget.setCurrentWidget(self.end_screen)
-        self.result_label.setText(f"Good answers: {self.good_answers}/10")
+        self.result_label.setText(f"Good answers: {self.good_answers}/{self.quesions}")
         if self.mode == 0:
             self.answer_entry.returnPressed.disconnect(self.submit_answer)
 
